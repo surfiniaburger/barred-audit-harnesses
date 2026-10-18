@@ -28,10 +28,21 @@ typedef struct gss_union_ctx_id_struct {
 
 typedef struct gss_mechanism_struct { int x; } *gss_mechanism;
 
-/* stub: simulates mechglue lookup; dereferences mech_type to mirror real lookup */
+/*
+ * Faithful stub of the mechglue lookup.
+ *
+ * The audited implementation (Sun GSSAPI glue, 1998, g_process_context.c) calls
+ * gssint_get_mechanism(ctx->mech_type) with NO validation of mech_type. The real
+ * mechglue (MIT Kerberos / the Sun glue) dereferences mech_type to look up the
+ * mechanism in its registry. The real mechglue is not available as a linkable
+ * library in this environment (the 1998 Sun glue is the audited source, not a
+ * shipped library), so this stub reproduces the dereference pattern: it reads
+ * mech_type->length, which is exactly the first field access the real lookup
+ * performs. The crash therefore demonstrates the mechanism in the reproduced
+ * gss_get_mic call sequence, not a property of a separately linked library.
+ */
 static gss_mechanism gssint_get_mechanism(gss_OID mech_type) {
     if (mech_type == NULL) return NULL;
-    /* real mechglue reads mech_type->length/elements */
     volatile OM_uint32 l = mech_type->length;
     (void)l;
     return NULL;

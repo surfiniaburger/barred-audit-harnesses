@@ -10,7 +10,7 @@ Each harness reproduces a single, concrete memory-safety claim from a code seed 
 
 Reproduces the claim that `gss_get_mic` dereferences an unvalidated `context_handle` (cast to `gss_union_ctx_id_t`) and reads `ctx->internal_ctx_id` / `ctx->mech_type` without a handle-registry or magic-number check.
 
-The harness defines `gss_union_ctx_id_t` from the upstream mechglue layout, implements `val_get_mic_args` and `gss_get_mic` verbatim from the seed, and supplies a stub `gssint_get_mechanism` that dereferences its `mech_type` argument (mirroring the real mechglue lookup). It calls `gss_get_mic` with a crafted handle whose `internal_ctx_id != GSS_C_NO_CONTEXT` (passes the NULL check) and whose `mech_type` points to unmapped memory.
+The harness defines `gss_union_ctx_id_t` from the upstream mechglue layout and implements `val_get_mic_args` and `gss_get_mic` verbatim from the seed. `gssint_get_mechanism` is a faithful stub: the real mechglue (Sun GSSAPI glue, 1998) is not available as a linkable library in this environment, so the stub reproduces the dereference the real lookup performs (`mech_type->length`). The crash therefore demonstrates the mechanism in the reproduced `gss_get_mic` call sequence, not a property of a separately linked library.
 
 **Observed result:** crash (SIGSEGV/SIGBUS) — the dereference is reachable given a crafted handle. Attacker reachability (whether any real caller passes attacker-influenced data) remains a separate, unresolved threat-model question.
 
