@@ -18,7 +18,7 @@ The harness defines `gss_union_ctx_id_t` from the upstream mechglue layout and i
 
 Reproduces the claim that `grow_gap` in HTML::Parser computes `SvGROW(sv, e_offset + grow + 1)` where `grow = repl_len - (s - t)`, and that an overflow wraps to a small allocation followed by an out-of-bounds `Move`.
 
-The harness creates an SV, then calls `SvGROW(sv, (STRLEN)-1)` (a max-size request simulating the overflowed value) under Perl 5.44.0 (`usemymalloc='n'`, system allocator).
+The harness creates an SV, then calls `SvGROW(sv, 2)` — the wrapped value of `e_offset + grow + 1` when `grow` is maximal (`e_offset = 2`, `grow = (STRLEN)-1`) — under Perl 5.44.0 (`usemymalloc='n'`, system allocator).
 
 **Observed result:** on Perl 5.44.0 (`usemymalloc='n'`, system allocator), `SvGROW(sv, 2)` (the wrapped value of `e_offset + grow + 1` when `grow` is maximal) returns without rejecting the size — SvGROW neither allocates a (possibly wrapped) small buffer nor croaks; it is effectively a no-op because the existing buffer is already at least that large. This confirms SvGROW does not detect the overflow. It does **not** demonstrate the subsequent out-of-bounds `Move`: executing that path in a way that reliably lands outside the buffer requires constructing an SV whose allocation is exactly the wrapped capacity and running the Move in an isolated/instrumented process, which this harness does not do. The residual risk (a wrapped small size leading to an undersized allocation and an OOB Move) stands on the arithmetic, not on this probe. Protection must come from checked arithmetic on the complete expression `e_offset + grow + 1`.
 
